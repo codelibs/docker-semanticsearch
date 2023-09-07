@@ -6,6 +6,11 @@ fess-script-groovy:14.10.0
 fess-webapp-semantic-search:14.10.1
 "
 
+if [ $(uname -s) = "Linux" ] ; then
+  echo "Changing an owner for directories..."
+  sudo chown -R $(id -u)  ${base_dir}/data
+fi
+
 echo "Creating directories..."
 mkdir -p ${base_dir}/data/https-portal/ssl_certs
 mkdir -p ${base_dir}/data/fess/opt/fess
@@ -23,7 +28,7 @@ for fess_plugin in ${fess_plugins} ; do
   plugin_version=$(echo $fess_plugin | sed -e "s/.*://")
   plugin_file=${base_dir}/data/fess/usr/share/fess/app/WEB-INF/plugin/${plugin_name}-${plugin_version}.jar
   echo "Downloading ${plugin_name} version ${plugin_version}..."
-  curl -o ${plugin_file} \
+  curl -s -o ${plugin_file} \
     https://repo1.maven.org/maven2/org/codelibs/fess/${plugin_name}/${plugin_version}/${plugin_name}-${plugin_version}.jar
 done
 

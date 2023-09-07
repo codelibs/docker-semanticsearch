@@ -1,19 +1,31 @@
 #!/bin/bash
 
-USERID=`whoami`
-BRANCH=`git branch | grep ^\* | awk '{ print $2 }'`
-TMP_PROP_FILE=/tmp/system.properties.$$
+base_dir=$(cd $(dirname $0);cd ..;pwd)
+user_id=$(id -u)
+branch=`git branch | grep ^\* | awk '{ print $2 }'`
+tmp_file=/tmp/system.properties.$$
 
-sudo chown -R $USERID ./data/fess/opt/fess
-sudo chown -R $USERID ./data/fess/usr/share/fess/app/WEB-INF/view/semantic
-cp ./data/fess/opt/fess/system.properties $TMP_PROP_FILE
-git checkout -- ./data/fess/opt/fess
+if [ $(uname -s) = "Linux" ] ; then
+  echo "Changing an owner for directories..."
+  sudo chown -R ${user_id} ${base_dir}/data
+fi
 
-git pull origin $BRANCH
+cp ${base_dir}/data/fess/opt/fess/system.properties ${tmp_file}
+git checkout -- ${base_dir}/data/fess/opt/fess
+git pull origin ${branch}
 
-cp $TMP_PROP_FILE ./data/fess/opt/fess/system.properties
-sudo chown -R 1001 ./data/fess/opt/fess
-sudo chown -R 1001 ./data/fess/usr/share/fess/app/WEB-INF/view/semantic
+cp ${tmp_file} ${base_dir}/data/fess/opt/fess/system.properties
 
+if [ $(uname -s) = "Linux" ] ; then
+  echo "Changing an owner for directories..."
+  sudo chown -R root ${base_dir}/data/https-portal/ssl_certs
+  sudo chown -R 1001 ${base_dir}/data/fess/opt/fess
+  sudo chown -R 1001 ${base_dir}/data/fess/var/lib/fess
+  sudo chown -R 1001 ${base_dir}/data/fess/var/log/fess
+  sudo chown -R 1001 ${base_dir}/data/fess/usr/share/fess/app/WEB-INF/plugin
+  sudo chown -R 1001 ${base_dir}/data/fess/usr/share/fess/app/WEB-INF/view/semantic
+  sudo chown -R 1000 ${base_dir}/data/opensearch/usr/share/opensearch/data
+  sudo chown -R 1000 ${base_dir}/data/opensearch/usr/share/opensearch/config/dictionary
+fi
 
-rm $TMP_PROP_FILE
+rm ${tmp_file}
