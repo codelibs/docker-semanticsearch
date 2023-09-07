@@ -67,4 +67,5 @@ docker compose -f compose.yaml down
 
 ## For Production
 
-* Replace `semantic.codelibs.org` with your domain in compose.yaml.
+* Replace `semantic.codelibs.org` with your domain in compose-production.yaml.
+

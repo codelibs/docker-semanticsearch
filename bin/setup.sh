@@ -3,7 +3,7 @@
 base_dir=$(cd $(dirname $0);cd ..;pwd)
 fess_plugins="
 fess-script-groovy:14.10.0
-fess-webapp-semantic-search:14.10.0
+fess-webapp-semantic-search:14.10.1
 "
 
 echo "Creating directories..."

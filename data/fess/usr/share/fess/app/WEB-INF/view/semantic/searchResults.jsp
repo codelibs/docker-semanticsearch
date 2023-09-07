@@ -64,6 +64,12 @@
 							key="labels.search_result_more" /></a>
 				</div>
 				<div class="info">
+					<c:if test="${doc.searcher!=null}">
+						<c:forEach var="searcher" items="${doc.searcher}">
+							<c:if test="${searcher=='default'}"><i class="far fa-user"></i></c:if>
+							<c:if test="${searcher=='semantic'}"><i class="fas fa-robot"></i></c:if>
+					</c:forEach>
+					</c:if>
 					<fmt:formatDate value="${fe:parseDate(doc.last_modified)}" type="BOTH" pattern="yyyy-MM-dd HH:mm" />
 					<c:if test="${doc.last_modified==null || doc.last_modified==''}">
 						<fmt:formatDate value="${fe:parseDate(doc.created)}" type="BOTH" pattern="yyyy-MM-dd HH:mm" />

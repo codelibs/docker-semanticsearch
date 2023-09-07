@@ -1,7 +1,7 @@
 services:
   fess01:
     container_name: fess01
-    image: ghcr.io/codelibs/fess:14.10.0
+    image: ghcr.io/codelibs/fess:snapshot
     ports:
       - "8080:8080"
     depends_on:
@@ -9,7 +9,8 @@ services:
     environment:
       - "ES_HTTP_URL=http://search01:9200"
       - "FESS_DICTIONARY_PATH=/usr/share/opensearch/config/dictionary/"
-      - "FESS_JAVA_OPTS=-Dfess.config.crawler.document.cache.enabled=false -Dfess.config.adaptive.load.control=20 -Dfess.config.index.user.initial_password=admin"
+      - "FESS_JAVA_OPTS=-Dfess.config.crawler.document.cache.enabled=false -Dfess.config.adaptive.load.control=0 -Dfess.config.query.additional.response.fields=searcher -Dfess.config.index.user.initial_password=admin"
+#      - "FESS_LOG_LEVEL=debug"
     networks:
       - semantic_net
     volumes:
