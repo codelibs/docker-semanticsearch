@@ -1,7 +1,7 @@
 services:
   fess01:
     container_name: fess01
-    image: ghcr.io/codelibs/fess:14.10.1
+    image: ghcr.io/codelibs/fess:14.14.0
     ports:
       - "8080:8080"
     depends_on:
@@ -28,7 +28,7 @@ services:
 
   search01:
     container_name: search01
-    image: ghcr.io/codelibs/fess-opensearch:2.9.0
+    image: ghcr.io/codelibs/fess-opensearch:2.14.0
     environment:
       - node.name=search01
       - discovery.seed_hosts=search01
@@ -36,8 +36,9 @@ services:
       - cluster.name=fess-es
       - bootstrap.memory_lock=true
       - node.roles=cluster_manager,data,ingest,ml
-      - plugins.security.disabled=true
       - "OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g"
+      - "DISABLE_INSTALL_DEMO_CONFIG=true"
+      - "DISABLE_SECURITY_PLUGIN=true"
       - "FESS_DICTIONARY_PATH=/usr/share/opensearch/config/dictionary"
     ulimits:
       memlock:

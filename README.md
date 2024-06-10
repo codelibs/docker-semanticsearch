@@ -1,48 +1,50 @@
 # Semantic Search on Fess
 
-[Fess](https://fess.codelibs.org/) is Enterprise Search Server.
-This docker environment provides a Semantic Search Server on Fess.
+[Fess](https://fess.codelibs.org/) is an Enterprise Search Server. This Docker environment provides a Semantic Search Server on Fess.
 
 ## Public Site
 
-* [semantic.codelibs.org](https://semantic.codelibs.org/)
+Visit our public site at [semantic.codelibs.org](https://semantic.codelibs.org/).
 
 ## Getting Started
 
-### Setup
+### Prerequisites
 
-```
-$ git clone https://github.com/codelibs/docker-semanticsearch.git
-$ cd docker-semanticsearch
-$ bash ./bin/setup.sh
-```
-
-### Start Server
-
-```
-$ docker compose -f compose.yaml up -d
-```
-
-and then access `http://localhost:8080/`.
+Ensure you have Docker and Git installed on your system.
 
 ### Setup
 
-First, run the following script.
+Clone the repository and run the setup script:
+
+```sh
+git clone https://github.com/codelibs/docker-semanticsearch.git
+cd docker-semanticsearch
+bash ./bin/setup.sh
+```
+
+### Start the Server
+
+Start the server using Docker Compose:
+
+```sh
+docker compose -f compose.yaml up -d
+```
+
+Once started, access the server at `http://localhost:8080/`.
+
+### Configure Semantic Search
+
+Run the setup script for semantic search models:
+
+```sh
+bash <(curl -s https://raw.githubusercontent.com/codelibs/fess-webapp-semantic-search/fess-webapp-semantic-search-14.10.0/tools/setup.sh)
+```
+
+Select a model from the list provided by the script. For example, choose option `7` for `huggingface/sentence-transformers/multi-qa-mpnet-base-dot-v1`.
+
+The script will output system properties similar to the following:
 
 ```
-$ bash <(curl -s https://raw.githubusercontent.com/codelibs/fess-webapp-semantic-search/fess-webapp-semantic-search-14.10.0/tools/setup.sh)
-Models:
-[1] huggingface/sentence-transformers/all-distilroberta-v1
-[2] huggingface/sentence-transformers/all-MiniLM-L6-v2"
-[3] huggingface/sentence-transformers/all-MiniLM-L12-v2
-[4] huggingface/sentence-transformers/all-mpnet-base-v2
-[5] huggingface/sentence-transformers/msmarco-distilbert-base-tas-b
-[6] huggingface/sentence-transformers/multi-qa-MiniLM-L6-cos-v1
-[7] huggingface/sentence-transformers/multi-qa-mpnet-base-dot-v1
-[8] huggingface/sentence-transformers/paraphrase-MiniLM-L3-v2
-[9] huggingface/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
-Which model would you like to use? 7
-...
 --- system properties: start ---
 fess.semantic_search.pipeline=neural_pipeline
 fess.semantic_search.content.field=content_vector
@@ -55,17 +57,33 @@ fess.semantic_search.min_score=0.5
 --- system properties: end ---
 ```
 
-In Admin > General page, add the above values to System Properties.
+Copy these properties.
 
-Finally, in Admin > Maintenance page, start reindexing and then a semantic search on Fess is available.
+### Update System Properties in Fess
 
-### Stop Server
+1. Go to the **Admin** > **General** page.
+2. Add the copied values to the **System Properties** field.
 
-```
+### Reindex Data
+
+1. Navigate to the **Admin** > **Maintenance** page.
+2. Start the reindexing process.
+
+Your semantic search setup on Fess is now complete and ready to use.
+
+### Stop the Server
+
+To stop the server, run:
+
+```sh
 docker compose -f compose.yaml down
 ```
 
 ## For Production
 
-* Replace `semantic.codelibs.org` with your domain in compose-production.yaml.
+To deploy in a production environment, replace `semantic.codelibs.org` with your domain in `compose-production.yaml`.
+
+---
+
+For additional support or information, please visit the [Fess documentation](https://fess.codelibs.org/).
 
