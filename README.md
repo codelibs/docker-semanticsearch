@@ -37,18 +37,20 @@ Once started, access the server at `http://localhost:8080/`.
 Run the setup script for semantic search models:
 
 ```sh
-bash <(curl -s https://raw.githubusercontent.com/codelibs/fess-webapp-semantic-search/fess-webapp-semantic-search-14.10.0/tools/setup.sh)
+bash <(curl -s https://raw.githubusercontent.com/codelibs/fess-webapp-semantic-search/main/tools/setup.sh)
 ```
 
-Select a model from the list provided by the script. For example, choose option `7` for `huggingface/sentence-transformers/multi-qa-mpnet-base-dot-v1`.
+Select a model from the list provided by the script. For example, choose option `9` for `huggingface/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`.
 
 The script will output system properties similar to the following:
 
 ```
 --- system properties: start ---
 fess.semantic_search.pipeline=neural_pipeline
-fess.semantic_search.content.field=content_vector
-fess.semantic_search.content.dimension=768
+fess.semantic_search.content.nested_field=content_vector
+fess.semantic_search.content.chunk_field=content_chunk
+fess.semantic_search.content.field=knn
+fess.semantic_search.content.dimension=384
 fess.semantic_search.content.method=hnsw
 fess.semantic_search.content.engine=lucene
 fess.semantic_search.content.space_type=cosinesimil

@@ -1,7 +1,7 @@
 services:
   fess01:
     container_name: fess01
-    image: ghcr.io/codelibs/fess:14.14.0
+    image: ghcr.io/codelibs/fess:snapshot
     ports:
       - "8080:8080"
     depends_on:
@@ -28,7 +28,7 @@ services:
 
   search01:
     container_name: search01
-    image: ghcr.io/codelibs/fess-opensearch:2.14.0
+    image: ghcr.io/codelibs/fess-opensearch:2.15.0
     environment:
       - node.name=search01
       - discovery.seed_hosts=search01
