@@ -1,16 +1,14 @@
 services:
   fess01:
+    image: ghcr.io/codelibs/fess:14.18.0
     container_name: fess01
-    image: ghcr.io/codelibs/fess:snapshot
-    ports:
-      - "8080:8080"
-    depends_on:
-      - search01
     environment:
-      - "ES_HTTP_URL=http://search01:9200"
-      - "FESS_DICTIONARY_PATH=/usr/share/opensearch/config/dictionary/"
+      - "SEARCH_ENGINE_HTTP_URL=http://search01:9200"
+      - "FESS_DICTIONARY_PATH=${FESS_DICTIONARY_PATH:-/usr/share/opensearch/config/dictionary/}"
       - "FESS_JAVA_OPTS=-Dfess.config.crawler.document.cache.enabled=false -Dfess.config.adaptive.load.control=0 -Dfess.config.query.additional.response.fields=searcher -Dfess.config.index.user.initial_password=admin"
 #      - "FESS_LOG_LEVEL=debug"
+    ports:
+      - "8080:8080"
     networks:
       - semantic_net
     volumes:
@@ -19,6 +17,8 @@ services:
       - ./data/fess/var/log/fess:/var/log/fess
       - ./data/fess/usr/share/fess/app/WEB-INF/plugin:/usr/share/fess/app/WEB-INF/plugin
       - ./data/fess/usr/share/fess/app/WEB-INF/view/semantic:/usr/share/fess/app/WEB-INF/view/semantic
+    depends_on:
+      - search01
     logging:
       driver: "json-file"
       options:
@@ -27,13 +27,13 @@ services:
     restart: unless-stopped
 
   search01:
+    image: ghcr.io/codelibs/fess-opensearch:2.18.0
     container_name: search01
-    image: ghcr.io/codelibs/fess-opensearch:2.15.0
     environment:
       - node.name=search01
       - discovery.seed_hosts=search01
       - cluster.initial_cluster_manager_nodes=search01
-      - cluster.name=fess-es
+      - cluster.name=fess-search
       - bootstrap.memory_lock=true
       - node.roles=cluster_manager,data,ingest,ml
       - "OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g"

@@ -37,7 +37,7 @@ Once started, access the server at `http://localhost:8080/`.
 Run the setup script for semantic search models:
 
 ```sh
-bash <(curl -s https://raw.githubusercontent.com/codelibs/fess-webapp-semantic-search/main/tools/setup.sh)
+bash <(curl -s https://raw.githubusercontent.com/codelibs/fess-webapp-semantic-search/refs/tags/fess-webapp-semantic-search-14.18.0/tools/setup.sh)
 ```
 
 Select a model from the list provided by the script. For example, choose option `9` for `huggingface/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`.
@@ -65,6 +65,11 @@ Copy these properties.
 
 1. Go to the **Admin** > **General** page.
 2. Add the copied values to the **System Properties** field.
+3. Click **Update** button.
+
+### Configure Crawl Settings
+
+When creating crawl settings before starting a crawl, you must specify semantic in the Virtual Host field. This step ensures semantic search functions correctly.
 
 ### Reindex Data
 

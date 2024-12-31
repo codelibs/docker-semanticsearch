@@ -2,8 +2,8 @@
 
 base_dir=$(cd $(dirname $0);cd ..;pwd)
 fess_plugins="
-fess-script-groovy:14.15.0
-fess-webapp-semantic-search:14.16.0-SNAPSHOT
+fess-script-groovy:14.18.0
+fess-webapp-semantic-search:14.18.0
 "
 
 if [ $(uname -s) = "Linux" ] ; then
