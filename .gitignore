@@ -1,6 +1,7 @@
 /.env
 /data/https-portal/ssl_certs
-/data/fess/opt/fess/system.properties
+/data/fess/opt/fess/*
+!/data/fess/opt/fess/system.properties.template
 /data/fess/var/lib/fess
 /data/fess/var/log/fess
 /data/fess/usr/share/fess/app/WEB-INF/plugin

@@ -83,7 +83,7 @@ if [ "$(uname -s)" = "Linux" ]; then
   sudo chown -R 1001 ./data/fess/usr/share/fess/app/themes
   sudo chown -R 1000 ./data/opensearch/usr/share/opensearch/data
   sudo chown -R 1000 ./data/opensearch/usr/share/opensearch/config/dictionary
-  sudo chown -R 1000 ./data/semantic
+  sudo chown -R 1001 ./data/semantic
 fi
 
 echo "Setup complete. Next: docker compose up -d"

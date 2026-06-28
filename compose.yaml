@@ -34,6 +34,11 @@ services:
       - 9200:9200
     networks:
       - semantic_net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   init-semantic:
     image: alpine:3.21
@@ -47,6 +52,9 @@ services:
       - MODEL_DIMENSION=${MODEL_DIMENSION:-384}
       - PIPELINE_NAME=neural_pipeline
       - MODEL_ID_FILE=/semantic/model_id
+      - CHUNK_TOKEN_LIMIT=${CHUNK_TOKEN_LIMIT:-100}
+      - CHUNK_OVERLAP_RATE=${CHUNK_OVERLAP_RATE:-0.1}
+      - MAX_WAIT=${MAX_WAIT:-900}
     volumes:
       - ./bin/setup-semantic.sh:/setup-semantic.sh:ro
       - ./data/semantic:/semantic
@@ -108,6 +116,11 @@ services:
       - ./data/fess/usr/share/fess/app/themes/${THEME_NAME:-nomadkit}:/usr/share/fess/app/themes/${THEME_NAME:-nomadkit}
     networks:
       - semantic_net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   https-portal:
     image: steveltn/https-portal:1
@@ -116,7 +129,8 @@ services:
       - '80:80'
       - '443:443'
     depends_on:
-      - fess01
+      fess01:
+        condition: service_healthy
     environment:
       DOMAINS: '${DOMAIN:-semantic.codelibs.org} -> http://fess01:8080'
       STAGE: local
@@ -124,6 +138,11 @@ services:
           add_header X-Frame-Options SAMEORIGIN;
     networks:
       - semantic_net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
     volumes:
       - ./data/https-portal/ssl_certs:/var/lib/https-portal
       # https-portal applies a per-domain vhost template named <domain>.ssl.conf.erb.
