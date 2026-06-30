@@ -1,7 +1,31 @@
 services:
   https-portal:
+    image: steveltn/https-portal:1
+    restart: always
+    ports:
+      - '80:80'
+      - '443:443'
+    depends_on:
+      fess01:
+        condition: service_healthy
     environment:
+      DOMAINS: '${DOMAIN:-semantic.codelibs.org} -> http://fess01:8080'
       STAGE: production
+      CUSTOM_NGINX_SERVER_CONFIG_BLOCK: |
+          add_header X-Frame-Options SAMEORIGIN;
+    networks:
+      - semantic_net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+    volumes:
+      - ./data/https-portal/ssl_certs:/var/lib/https-portal
+      # https-portal applies a per-domain vhost template named <domain>.ssl.conf.erb.
+      # For a custom DOMAIN, copy data/https-portal/conf/semantic.codelibs.org.ssl.conf.erb
+      # to data/https-portal/conf/<domain>.ssl.conf.erb so this mount resolves.
+      - ./data/https-portal/conf/${DOMAIN:-semantic.codelibs.org}.ssl.conf.erb:/var/lib/nginx-conf/${DOMAIN:-semantic.codelibs.org}.ssl.conf.erb:ro
 
   search01:
     environment:

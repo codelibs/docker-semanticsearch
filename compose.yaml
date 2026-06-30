@@ -31,7 +31,10 @@ services:
       - ./data/opensearch/usr/share/opensearch/data:/usr/share/opensearch/data
       - ./data/opensearch/usr/share/opensearch/config/dictionary:/usr/share/opensearch/config/dictionary
     ports:
-      - 9200:9200
+      # Bind to host loopback only: OpenSearch here runs with security disabled.
+      # Inter-container traffic uses the docker network (search01:9200); this publish
+      # is only for host-local debugging. Do not expose 9200 on a public interface.
+      - "127.0.0.1:9200:9200"
     networks:
       - semantic_net
     logging:
@@ -49,6 +52,7 @@ services:
       - OPENSEARCH_URL=http://search01:9200
       - MODEL_NAME=${MODEL_NAME:-huggingface/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
       - MODEL_VERSION=${MODEL_VERSION:-1.0.1}
+      - MODEL_FORMAT=${MODEL_FORMAT:-TORCH_SCRIPT}
       - MODEL_DIMENSION=${MODEL_DIMENSION:-384}
       - PIPELINE_NAME=neural_pipeline
       - MODEL_ID_FILE=/semantic/model_id
@@ -88,6 +92,7 @@ services:
         -Dfess.config.adaptive.load.control=20
         -Dfess.config.query.facet.fields=label,host
         -Dfess.config.query.additional.response.fields=searcher
+        -Dfess.config.query.additional.api.response.fields=searcher
         -Dfess.config.index.user.initial_password=${FESS_ADMIN_PASSWORD:-admin}
         -Drank.fusion.searchers=default,semantic
         -Dfess.semantic_search.pipeline=neural_pipeline
@@ -113,7 +118,7 @@ services:
       - ./data/fess/var/lib/fess:/var/lib/fess
       - ./data/fess/var/log/fess:/var/log/fess
       - ./data/fess/usr/share/fess/app/WEB-INF/plugin:/usr/share/fess/app/WEB-INF/plugin
-      - ./data/fess/usr/share/fess/app/themes/${THEME_NAME:-nomadkit}:/usr/share/fess/app/themes/${THEME_NAME:-nomadkit}
+      - ./data/fess/usr/share/fess/app/themes/${THEME_NAME:-semanticlens}:/usr/share/fess/app/themes/${THEME_NAME:-semanticlens}
     networks:
       - semantic_net
     logging:
@@ -122,33 +127,31 @@ services:
         max-size: "10m"
         max-file: "5"
 
-  https-portal:
-    image: steveltn/https-portal:1
-    restart: always
-    ports:
-      - '80:80'
-      - '443:443'
+  # One-shot: after fess01 is healthy, ensure the document index carries the
+  # semantic vector mapping. Fess core creates the document index before the
+  # semantic plugin registers its index rewrite rules (DI boot order), so the
+  # auto-created index lacks content_vector/knn/default_pipeline. This triggers a
+  # Fess "Admin > Maintenance > Reindex" once to re-create the index with the
+  # plugin's mapping and swap the aliases. Idempotent: it no-ops when the vector
+  # field is already present, so it is safe on every restart.
+  init-fess-index:
+    image: alpine:3.21
     depends_on:
       fess01:
         condition: service_healthy
     environment:
-      DOMAINS: '${DOMAIN:-semantic.codelibs.org} -> http://fess01:8080'
-      STAGE: local
-      CUSTOM_NGINX_SERVER_CONFIG_BLOCK: |
-          add_header X-Frame-Options SAMEORIGIN;
+      - FESS_URL=http://fess01:8080
+      - OPENSEARCH_URL=http://search01:9200
+      - FESS_ADMIN_USER=admin
+      - FESS_ADMIN_PASSWORD=${FESS_ADMIN_PASSWORD:-admin}
+      - VECTOR_FIELD=content_vector
+      - MAX_WAIT=${MAX_WAIT:-300}
+    volumes:
+      - ./bin/setup-fess-index.sh:/setup-fess-index.sh:ro
+    entrypoint: ["/bin/sh", "-c", "apk add --no-cache curl >/dev/null && exec sh /setup-fess-index.sh"]
+    restart: "no"
     networks:
       - semantic_net
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "5"
-    volumes:
-      - ./data/https-portal/ssl_certs:/var/lib/https-portal
-      # https-portal applies a per-domain vhost template named <domain>.ssl.conf.erb.
-      # For a custom DOMAIN, copy data/https-portal/conf/semantic.codelibs.org.ssl.conf.erb
-      # to data/https-portal/conf/<domain>.ssl.conf.erb so this mount resolves.
-      - ./data/https-portal/conf/${DOMAIN:-semantic.codelibs.org}.ssl.conf.erb:/var/lib/nginx-conf/${DOMAIN:-semantic.codelibs.org}.ssl.conf.erb:ro
 
 networks:
   semantic_net:

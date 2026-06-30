@@ -62,9 +62,10 @@ done
 os PUT /_cluster/settings '{"persistent":{"plugins.ml_commons.only_run_on_ml_node":false}}' >/dev/null || true
 
 # Model group: reuse by exact name, else register.
-group_id="$(os POST /_plugins/_ml/model_groups/_search \
-  "{\"size\":20,\"query\":{\"match\":{\"name\":\"${MODEL_NAME}\"}}}" \
-  | jq -r --arg n "${MODEL_NAME}" '[.hits.hits[] | select(._source.name==$n)][0]._id // empty')"
+# Capture search response separately so `|| true` applies only to the os call, not jq.
+_grp_resp="$(os POST /_plugins/_ml/model_groups/_search \
+  "{\"size\":20,\"query\":{\"match\":{\"name\":\"${MODEL_NAME}\"}}}" || true)"
+group_id="$(echo "${_grp_resp}" | jq -r --arg n "${MODEL_NAME}" '[.hits.hits[] | select(._source.name==$n)][0]._id // empty')"
 if [ -z "${group_id}" ]; then
   log "Registering model group..."
   group_id="$(os POST /_plugins/_ml/model_groups/_register \
@@ -75,9 +76,13 @@ fi
 log "model_group_id=${group_id}"
 
 # Model: reuse an existing registered model in the group, else register a new one.
-model_id="$(os POST /_plugins/_ml/models/_search \
-  "{\"size\":20,\"query\":{\"bool\":{\"must\":[{\"match\":{\"name\":\"${MODEL_NAME}\"}},{\"term\":{\"model_group_id\":\"${group_id}\"}}]}}}" \
-  | jq -r --arg n "${MODEL_NAME}" '[.hits.hits[] | select(._source.name==$n and ._source.model_state!=null)][0]._id // empty')"
+# Capture search response separately so `|| true` applies only to the os call, not jq.
+_mdl_resp="$(os POST /_plugins/_ml/models/_search \
+  "{\"size\":20,\"query\":{\"bool\":{\"must\":[{\"match\":{\"name\":\"${MODEL_NAME}\"}},{\"term\":{\"model_group_id\":\"${group_id}\"}}]}}}" || true)"
+# Only reuse models in a healthy/reusable state; ignore REGISTERING/DEPLOYING/DEPLOY_FAILED
+# so a broken leftover model does not permanently wedge the stack.
+model_id="$(echo "${_mdl_resp}" | jq -r --arg n "${MODEL_NAME}" \
+  '[.hits.hits[] | select(._source.name==$n)] as $m | ([$m[] | select(._source.model_state=="DEPLOYED")] + [$m[] | select(._source.model_state=="REGISTERED")] + [$m[] | select(._source.model_state=="PARTIALLY_DEPLOYED")])[0]._id // empty')"
 if [ -z "${model_id}" ]; then
   log "Registering model ${MODEL_NAME} v${MODEL_VERSION} (OpenSearch downloads it; may take several minutes)..."
   task_id="$(os POST /_plugins/_ml/models/_register \
@@ -100,7 +105,10 @@ fi
 [ "${state}" = "DEPLOYED" ] || { log "ERROR: model is not DEPLOYED (state=${state:-unknown})"; exit 1; }
 
 # Validate the embedding dimension matches the configured index mapping dimension.
-actual_dim="$(os GET "/_plugins/_ml/models/${model_id}" | jq -r '.model_config.embedding_dimension // empty')"
+# Fetch the model document once; a real failure aborts here under set -e rather than
+# silently leaving actual_dim empty and skipping the validation.
+model_doc="$(os GET "/_plugins/_ml/models/${model_id}")"
+actual_dim="$(echo "${model_doc}" | jq -r '.model_config.embedding_dimension // empty')"
 if [ -n "${actual_dim}" ] && [ "${actual_dim}" != "${MODEL_DIMENSION}" ]; then
   log "ERROR: model embedding_dimension=${actual_dim} != MODEL_DIMENSION=${MODEL_DIMENSION}. Update MODEL_DIMENSION to match."
   exit 1

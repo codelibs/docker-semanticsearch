@@ -1,5 +1,5 @@
 #system.properties
-theme.default=nomadkit
+theme.default=semanticlens
 suggest.document=true
 suggest.searchlog=true
 web.api.json=true

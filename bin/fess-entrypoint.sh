@@ -6,7 +6,8 @@
 # system property. The id is generated at model-registration time by the init-semantic
 # service, which writes it to /semantic/model_id (a shared volume). This wrapper injects
 # it as -D, then launches the stock Fess entrypoint. If the id is not available, Fess
-# still starts and serves keyword search; semantic queries activate once it is set.
+# still starts and serves keyword search; the id is read only once here, so semantic
+# queries activate only after fess01 is (re)started with the id present (no live reload).
 set -eu
 
 MODEL_ID_FILE="${SEMANTIC_MODEL_ID_FILE:-/semantic/model_id}"
