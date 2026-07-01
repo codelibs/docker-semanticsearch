@@ -1,7 +1,26 @@
-/data/https-portal/ssl_certs
-#/data/fess/opt/fess
+# Environment
+/.env
+
+# Fess (runtime data, logs, plugins, themes)
+/data/fess/opt/fess/*
+!/data/fess/opt/fess/system.properties.template
 /data/fess/var/lib/fess
 /data/fess/var/log/fess
 /data/fess/usr/share/fess/app/WEB-INF/plugin
+/data/fess/usr/share/fess/app/themes
+
+# OpenSearch (index data, generated dictionaries)
 /data/opensearch/usr/share/opensearch/data
 /data/opensearch/usr/share/opensearch/config/dictionary
+
+# Semantic search models / cache
+/data/semantic
+
+# HTTPS portal (generated TLS certificates)
+/data/https-portal/ssl_certs
+
+# Docs (local-only)
+/docs/superpowers
+
+# OS / editor artifacts
+.DS_Store
