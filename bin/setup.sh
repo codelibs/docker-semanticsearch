@@ -19,12 +19,17 @@ DOMAIN="${DOMAIN:-$(env_get DOMAIN)}"
 
 # Host-side setup for docker-semanticsearch:
 #   - create the bind-mount data directories
+#   - drop a deprecated fess-webapp-semantic-search jar left over from Fess 15.7
 #   - seed the live system.properties from the tracked template (first run only)
 #   - sync the static UI theme from fess-themes
 #
-# The ML embedding model and the neural ingest pipeline are set up automatically by
-# the init-semantic container during `docker compose up`; this script does NOT talk
-# to OpenSearch. Re-running it is safe.
+# The ML embedding model is registered automatically by the init-semantic container,
+# and the chunk-vector job is enabled by init-fess-chunk, both during
+# `docker compose up`; this script does NOT talk to OpenSearch or Fess.
+# Re-running it is safe.
+#
+# On Linux this script uses sudo to chown ./data to the container UIDs (1001 for
+# Fess, 1000 for OpenSearch) and to reclaim it on a re-run.
 
 THEME_NAME="${THEME_NAME:-semanticlens}"
 THEME_DEST="./data/fess/usr/share/fess/app/themes/${THEME_NAME}"
@@ -53,11 +58,15 @@ mkdir -p ./data/fess/opt/fess
 mkdir -p ./data/fess/var/lib/fess
 mkdir -p ./data/fess/var/log/fess
 mkdir -p ./data/fess/usr/share/fess/app/WEB-INF/plugin
-# Remove any previously installed semantic-search plugin jar so a SEMANTIC_PLUGIN_VERSION
-# change doesn't leave two versions in the persisted plugin dir (Fess would load
-# duplicate components). The image reinstalls the pinned version from FESS_PLUGINS
-# on the next `docker compose up`.
-rm -f ./data/fess/usr/share/fess/app/WEB-INF/plugin/fess-webapp-semantic-search-*.jar
+# Semantic search moved into Fess core in 15.8 and fess-webapp-semantic-search is
+# deprecated. A jar left in the persisted plugin dir by a 15.7-era run would still be
+# loaded: its index rewrite rules inject a second "knn" key into the index settings,
+# and it registers a `semantic` searcher that is not the core `semantic_chunk` one.
+# Drop it unconditionally.
+if compgen -G './data/fess/usr/share/fess/app/WEB-INF/plugin/fess-webapp-semantic-search-*.jar' >/dev/null; then
+  echo "Removing the deprecated fess-webapp-semantic-search plugin jar (superseded by Fess 15.8 core)."
+  rm -f ./data/fess/usr/share/fess/app/WEB-INF/plugin/fess-webapp-semantic-search-*.jar
+fi
 mkdir -p "${THEME_DEST}"
 mkdir -p ./data/opensearch/usr/share/opensearch/data
 mkdir -p ./data/opensearch/usr/share/opensearch/config/dictionary

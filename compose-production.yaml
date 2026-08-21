@@ -23,9 +23,18 @@ services:
     volumes:
       - ./data/https-portal/ssl_certs:/var/lib/https-portal
       # https-portal applies a per-domain vhost template named <domain>.ssl.conf.erb.
-      # For a custom DOMAIN, copy data/https-portal/conf/semantic.codelibs.org.ssl.conf.erb
-      # to data/https-portal/conf/<domain>.ssl.conf.erb so this mount resolves.
+      # bin/setup.sh seeds data/https-portal/conf/<domain>.ssl.conf.erb from the
+      # default template whenever DOMAIN differs from semantic.codelibs.org, so this
+      # mount resolves to a file rather than an auto-created directory.
       - ./data/https-portal/conf/${DOMAIN:-semantic.codelibs.org}.ssl.conf.erb:/var/lib/nginx-conf/${DOMAIN:-semantic.codelibs.org}.ssl.conf.erb:ro
+
+  fess01:
+    # https-portal terminates TLS and proxies over the compose network, so Fess
+    # itself does not need a public listener. `!override` replaces the base list
+    # instead of appending to it (Compose merges `ports` by concatenation, which
+    # would leave both binds fighting over 8080). Requires Compose v2.24+.
+    ports: !override
+      - "127.0.0.1:8080:8080"
 
   search01:
     environment:
