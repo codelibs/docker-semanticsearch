@@ -1,10 +1,16 @@
 #!/bin/sh
-# Idempotent OpenSearch ML model + neural ingest pipeline setup for Fess semantic
+# Idempotent OpenSearch ML Commons embedding-model setup for Fess 15.8 semantic
 # search. Runs in the init-semantic container (needs curl + jq). Writes the deployed
 # model id to ${MODEL_ID_FILE} for the Fess entrypoint wrapper to inject as a JVM -D.
 #
-# Re-running is safe: an existing model group / deployed model / pipeline is reused
-# rather than recreated, so restarts are fast and never register duplicate models.
+# Fess 15.8 generates embeddings itself by calling _plugins/_ml/models/<id>/_predict
+# from the Content Chunk Vector Indexer job, so a deployed model is all OpenSearch
+# has to provide. There is deliberately no ingest pipeline here: the 15.7-era
+# fess-webapp-semantic-search plugin used a text_chunking + text_embedding
+# default_pipeline, but core 15.8 chunks and embeds on the Fess side instead.
+#
+# Re-running is safe: an existing model group / deployed model is reused rather than
+# recreated, so restarts are fast and never register duplicate models.
 set -eu
 
 OPENSEARCH_URL="${OPENSEARCH_URL:-http://search01:9200}"
@@ -12,9 +18,6 @@ MODEL_NAME="${MODEL_NAME:-huggingface/sentence-transformers/paraphrase-multiling
 MODEL_VERSION="${MODEL_VERSION:-1.0.1}"
 MODEL_FORMAT="${MODEL_FORMAT:-TORCH_SCRIPT}"
 MODEL_DIMENSION="${MODEL_DIMENSION:-384}"
-PIPELINE_NAME="${PIPELINE_NAME:-neural_pipeline}"
-CHUNK_TOKEN_LIMIT="${CHUNK_TOKEN_LIMIT:-100}"
-CHUNK_OVERLAP_RATE="${CHUNK_OVERLAP_RATE:-0.1}"
 MODEL_ID_FILE="${MODEL_ID_FILE:-/semantic/model_id}"
 MAX_WAIT="${MAX_WAIT:-900}"
 
@@ -113,20 +116,6 @@ if [ -n "${actual_dim}" ] && [ "${actual_dim}" != "${MODEL_DIMENSION}" ]; then
   log "ERROR: model embedding_dimension=${actual_dim} != MODEL_DIMENSION=${MODEL_DIMENSION}. Update MODEL_DIMENSION to match."
   exit 1
 fi
-
-# Create/replace the neural ingest pipeline (chunk -> embed).
-log "Creating ingest pipeline '${PIPELINE_NAME}'..."
-os PUT "/_ingest/pipeline/${PIPELINE_NAME}" "{
-  \"description\": \"Neural search pipeline for Fess semantic search\",
-  \"processors\": [
-    { \"text_chunking\": {
-        \"algorithm\": { \"fixed_token_length\": { \"token_limit\": ${CHUNK_TOKEN_LIMIT}, \"overlap_rate\": ${CHUNK_OVERLAP_RATE}, \"tokenizer\": \"standard\" } },
-        \"field_map\": { \"content\": \"content_chunk\" } } },
-    { \"text_embedding\": {
-        \"model_id\": \"${model_id}\",
-        \"field_map\": { \"content_chunk\": \"content_vector\" } } }
-  ]
-}" >/dev/null
 
 # Hand off the model id to the Fess entrypoint wrapper.
 mkdir -p "$(dirname "${MODEL_ID_FILE}")"

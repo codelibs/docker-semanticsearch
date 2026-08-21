@@ -1,4 +1,12 @@
 #system.properties
+#
+# Seeded to data/fess/opt/fess/system.properties by bin/setup.sh on first run only;
+# after that Fess owns the live file (Admin > General rewrites it).
+#
+# content_chunker.* is deliberately NOT listed here even though this is its
+# configuration channel: those keys are driven from .env through
+# -Dfess.system.content_chunker.* in compose.yaml, and a key present in this file
+# would take precedence over the -D and freeze the value against .env edits.
 theme.default=semanticlens
 suggest.document=true
 suggest.searchlog=true
