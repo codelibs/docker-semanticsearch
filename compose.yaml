@@ -1,9 +1,12 @@
 services:
   search01:
-    # Fess 15.8 always writes "index.knn": true and a content_chunk_vector
+    # Fess always writes "index.knn": true and a content_chunk_vector
     # (knn_vector) mapping into the document index, whether or not the chunk
     # feature is enabled -- so the k-NN plugin is mandatory, not optional.
-    # ghcr.io/codelibs/fess-opensearch ships it (plus the Fess analyzers).
+    # The engine-side hybrid search (Fess 15.9+) also needs Neural Search for
+    # the `hybrid` query and its score-fusion processors.
+    # ghcr.io/codelibs/fess-opensearch ships k-NN, ML Commons and Neural Search
+    # (plus the Fess analyzers).
     image: ghcr.io/codelibs/fess-opensearch:${OPENSEARCH_VERSION:-3.8.0}
     container_name: search01
     restart: always
@@ -14,7 +17,7 @@ services:
       - cluster.name=fess-search
       - bootstrap.memory_lock=true
       # The `ml` role lets ML Commons host the embedding model in-cluster. Fess
-      # calls its _predict API directly; there is no ingest pipeline in 15.8.
+      # calls its _predict API directly; no ingest pipeline is involved.
       - node.roles=cluster_manager,data,ingest,ml
       - "OPENSEARCH_JAVA_OPTS=-Xms${OPENSEARCH_HEAP:-2g} -Xmx${OPENSEARCH_HEAP:-2g}"
       - "DISABLE_INSTALL_DEMO_CONFIG=true"
@@ -51,7 +54,7 @@ services:
 
   # One-shot: register and deploy the embedding model in OpenSearch ML Commons,
   # then hand its generated model id to fess01 through the shared ./data/semantic
-  # volume. Fess 15.8 embeds by calling _plugins/_ml/models/<id>/_predict, so the
+  # volume. Fess embeds by calling _plugins/_ml/models/<id>/_predict, so the
   # model is the only thing that has to exist on the OpenSearch side.
   init-semantic:
     image: alpine:3.21
@@ -75,7 +78,7 @@ services:
       - semantic_net
 
   fess01:
-    image: ghcr.io/codelibs/fess:${FESS_VERSION:-15.8.0}
+    image: ghcr.io/codelibs/fess:${FESS_VERSION:-15.9.0}
     container_name: fess01
     restart: always
     ports:
@@ -103,7 +106,16 @@ services:
       #
       # The dynamic embedding.opensearch.model.id is injected by bin/fess-entrypoint.sh
       # from the shared /semantic/model_id file written by the init-semantic service.
+      #
+      # rank.fusion.engine.* (Fess 15.9+) makes OpenSearch fuse the keyword and the
+      # vector query in ONE `hybrid` request instead of Fess running two searches and
+      # merging them, so the total hit count and facet counts describe the fused
+      # result set. Fess fuses by itself instead for advanced search (as.*) and pages
+      # beyond rank.fusion.pagination_depth (200); an explicit sort, a geo or a
+      # similar-document search skips the vector half and is keyword-only.
       FESS_JAVA_OPTS: >-
+        -Dfess.config.rank.fusion.engine.enabled=${RANK_FUSION_ENGINE:-true}
+        -Dfess.config.rank.fusion.combination.technique=${RANK_FUSION_TECHNIQUE:-rrf}
         -Dfess.config.crawler.document.cache.enabled=false
         -Dfess.config.adaptive.load.control=20
         -Dfess.config.query.facet.fields=label,host
