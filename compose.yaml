@@ -110,9 +110,11 @@ services:
       # rank.fusion.engine.* (Fess 15.9+) makes OpenSearch fuse the keyword and the
       # vector query in ONE `hybrid` request instead of Fess running two searches and
       # merging them, so the total hit count and facet counts describe the fused
-      # result set. Fess fuses by itself instead for advanced search (as.*) and pages
-      # beyond rank.fusion.pagination_depth (200); an explicit sort, a geo or a
-      # similar-document search skips the vector half and is keyword-only.
+      # result set. A fused search pages through its first rank.fusion.pagination_depth
+      # hits (default 1000); a page starting at or beyond that is refused (HTTP 400).
+      # Fess fuses by itself instead for advanced search (as.*) and with
+      # RANK_FUSION_ENGINE=false; an explicit sort, a geo or a similar-document search
+      # skips the vector half and is keyword-only.
       FESS_JAVA_OPTS: >-
         -Dfess.config.rank.fusion.engine.enabled=${RANK_FUSION_ENGINE:-true}
         -Dfess.config.rank.fusion.combination.technique=${RANK_FUSION_TECHNIQUE:-rrf}
