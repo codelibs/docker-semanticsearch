@@ -33,10 +33,17 @@ At query time Fess embeds the query and sends **one** search request: an OpenSea
 `hybrid` query whose two sub-queries are the keyword (BM25) query and the `knn` query,
 with an inline search pipeline that fuses them by Reciprocal Rank Fusion
 (`rank.fusion.engine.enabled=true`, new in Fess 15.9). Because OpenSearch fuses the
-results, the total hit count and the facet counts describe the fused result set. Fess
-fuses the two result lists itself instead (the 15.8 behaviour) for advanced searches
-(`as.*`) and for pages beyond `rank.fusion.pagination_depth` (default 200, about page 20
-at 10 hits per page); set `RANK_FUSION_ENGINE=false` to always fuse in Fess.
+results, the total hit count and the facet counts describe the fused result set.
+
+A fused search pages through its first `rank.fusion.pagination_depth` hits (default 1000,
+page 100 at 10 hits per page). A page that starts at or beyond that depth is refused (the
+JSON API answers HTTP 400 `invalid_request`), a page that runs past it is cut at the depth,
+and the hit count becomes a lower bound (`record_count_relation` is
+`GREATER_THAN_OR_EQUAL_TO`) once it reaches the depth. Fess fuses the two result lists
+itself instead (the 15.8 behaviour) for advanced searches (`as.*`) and when you set
+`RANK_FUSION_ENGINE=false`; that path has its own, smaller window
+(`rank.fusion.window_size`, 200), and a page that starts at hit 100 or later is answered
+by the keyword search alone.
 
 OpenSearch therefore hosts the model and runs the fusion. There is no ingest pipeline and
 no `neural` query — those belonged to the 15.7 plugin design. The `hybrid` query comes
@@ -149,7 +156,8 @@ curl -s -XPOST "http://localhost:9200/fess.search/_search" \
 ```
 
 `done` = chunked and embedded, `chunked` = chunked but no vector, `skipped` = too many
-chunks (`MAX_CHUNKS_PER_DOC`), `fail` = see the Fess log, `pending` = not processed yet.
+chunks (`MAX_CHUNKS_PER_DOC`), blank content, or no chunks at all, `fail` = see the Fess
+log, `pending` = not processed yet.
 
 ### Stop
 
@@ -178,10 +186,11 @@ or the request asks for something the vector query cannot do:
 - negated text (`-word`, `NOT word`), `allintitle:` / `allinurl:`
 - a query that is only a filter, with no free text
 - an explicit **sort order**, a geo search, or a similar-document search
-- result pages beyond `rank.fusion.pagination_depth` (default 200 hits)
 - the embedding model is unavailable (Fess logs a WARN and serves keyword results)
 
-This is deliberate core behaviour, not a configuration problem.
+This is deliberate core behaviour, not a configuration problem. These keyword-only
+queries are not limited by `rank.fusion.pagination_depth`: they page as far as the
+index's `max_result_window`, like any keyword search.
 
 ## Configuration
 
@@ -257,9 +266,19 @@ exclude it and Fess would log a warning while quietly serving keyword-only resul
 The hybrid switches `rank.fusion.engine.enabled` and `rank.fusion.combination.technique`
 are `fess_config.properties` keys, so they are passed as `-Dfess.config.*` (driven by
 `RANK_FUSION_ENGINE` / `RANK_FUSION_TECHNIQUE`). The rest of the `rank.fusion.*` family
-can be added the same way, e.g. `-Dfess.config.rank.fusion.combination.weights=default:0.6,semantic_chunk:0.4`
-to rank keyword matches above equally ranked vector matches (the weights name the two
-searchers, `default` and `semantic_chunk`).
+can be added the same way, e.g. the weights in the next note.
+
+> **Short terms and product codes can tie with an unrelated vector hit.** With the default
+> equal-weight RRF, a rare short term or product code can put the exact keyword hit and an
+> unrelated vector-only hit on the same rank 1, and the vector-only document can come out
+> first. To favour the keyword half, add to `FESS_JAVA_OPTS` in `compose.yaml`:
+> `-Dfess.config.rank.fusion.combination.weights=default:0.6,semantic_chunk:0.4`.
+> Measured on this stack, the exact keyword hit then comes first for such queries while
+> documents found by both halves still rank above documents found by only one;
+> `default:0.4,semantic_chunk:0.6` brings the vector-only document back to first. The
+> weights have to name exactly the searchers taking part (`default` and `semantic_chunk`)
+> and sum to 1.0; otherwise Fess logs an ERROR on every search and fuses in Fess instead
+> (the 15.8 behaviour).
 
 > **`SEMANTIC_MIN_SCORE` is a trade-off.** With the default model, correct paraphrases
 > and cross-language matches were measured at a cosine similarity of 0.38–0.83, while the
@@ -267,8 +286,8 @@ searchers, `default` and `semantic_chunk`).
 > The default 0.5 keeps unrelated questions out but misses some weaker paraphrases;
 > lowering it finds those and lets unrelated documents in. Short keywords and product
 > codes can also reach 0.5 against unrelated documents, which then share the top rank
-> with the exact keyword match. Re-measure when you change `MODEL_NAME`: scores are
-> model-specific.
+> with the exact keyword match (see the weights note above). Re-measure when you change
+> `MODEL_NAME`: scores are model-specific.
 
 The only runtime-dynamic value,
 `content_chunker.embedding.opensearch.model.id`, is injected by `bin/fess-entrypoint.sh`.
@@ -301,9 +320,14 @@ info, and job logs is **90 days** (`purge.searchlog.day`, `purge.userinfo.day`,
   Indexer job.
 - **ANN settings** (`KNN_METHOD` / `KNN_ENGINE` / `KNN_SPACE_TYPE`) are also mapping-time
   values and need the same reindex.
-- **Chunk size / overlap / min score / cron** take effect on the next job run; no reindex
-  is needed, but existing documents keep their old chunk boundaries until they are
-  re-chunked (remove `content_chunk_status` as above, or re-crawl).
+- **Chunk size / overlap / cron** take effect on the next job run; no reindex is needed,
+  but existing documents keep their old chunk boundaries until they are re-chunked (remove
+  `content_chunk_status` as above, or re-crawl).
+- **`SEMANTIC_MIN_SCORE` / `KNN_K`** are read at search time, so they need neither a job run
+  nor a reindex. Set in `.env`, they reach Fess as `-D` options, so `fess01` has to be
+  recreated (`docker compose up -d` does it). A value written to
+  `data/fess/opt/fess/system.properties` is picked up within seconds without a restart and
+  wins over the `-D` value, for as long as it stays in the file.
 - **Theme:** change `THEME_NAME` in `.env`, delete `data/fess/opt/fess/system.properties`,
   then re-run `bin/setup.sh` and `docker compose up -d`. `bin/setup.sh` never overwrites
   a live `system.properties`; it only warns when `theme.default` disagrees with
@@ -332,13 +356,14 @@ docker compose up -d
 
 Fess 15.9 moved the Groovy script engine out of core into the `fess-script-groovy`
 plugin and made JavaScript the default script type. An upgrade does not rewrite stored
-settings, so a 15.8 install keeps Groovy on all 14 bundled scheduled jobs. This stack
-does not get the Groovy plugin: the `WEB-INF/plugin` bind mount hides the copy baked
-into the 15.9 image. After the upgrade the **Default Crawler** and the **Content Chunk
-Vector Indexer** end with `fail`, and the only trace is a startup WARN (`Settings use the
-script engine groovy, which is not registered`). Search keeps working on the existing
-index, so this is easy to miss. `init-fess-chunk` does not repair it: it leaves an
-already-enabled job alone.
+settings, so a 15.8 install keeps Groovy on its 14 bundled scheduled jobs. Fess 15.9
+additionally creates the **Tag Updater** job, as JavaScript, at the first start, so after
+the migration below there are 15 jobs, all JavaScript. This stack does not get the Groovy
+plugin: the `WEB-INF/plugin` bind mount hides the copy baked into the 15.9 image. After
+the upgrade the **Default Crawler** and the **Content Chunk Vector Indexer** end with
+`fail`, and the only trace is a startup WARN (`Settings use the script engine groovy,
+which is not registered`). Search keeps working on the existing index, so this is easy to
+miss. `init-fess-chunk` does not repair it: it leaves an already-enabled job alone.
 
 The index and the stored vectors carry over as they are; the upgrade needs no reindex
 and no re-crawl. Switch the stored scripts to JavaScript once, right after the upgrade:
@@ -350,6 +375,8 @@ and no re-crawl. Switch the stored scripts to JavaScript once, right after the u
    docker compose pull
    docker compose up -d
    ```
+   Use plain `up -d`: `up -d --wait` exits with status 1 on an upgraded stack, because
+   `init-fess-chunk` exits at once when the indexer job is already enabled.
 3. Create an access token for the admin API: **Admin > System > Access Token** >
    **Create New**, with the permission `{role}admin-api`.
 4. Run the migration (it needs `python3` on the host):
@@ -447,14 +474,30 @@ via `jvm.chunk.options` in `fess_config.properties`, or cap each run with
   1. Confirm vectors exist — the `content_chunk_status` aggregation above should show
      `done` documents. If everything is `pending`, the indexer job has not run: check
      **Admin > System > Scheduler > Content Chunk Vector Indexer** and
-     `docker compose logs init-fess-chunk`.
+     `docker compose logs init-fess-chunk`. A run that was skipped because the embedding
+     model is not serving leaves them `pending` too (see the next item).
   2. Confirm the query is not hitting the syntax gate — see
      [When semantic search does *not* run](#when-semantic-search-does-not-run). A trailing
      half-width `?` or a sort order is enough to disable it.
   3. Confirm `fess01` picked up a model id:
      `docker compose logs fess01 | grep 'Injecting embedding model_id'`.
-- **All documents are `skipped`:** they produce more than `MAX_CHUNKS_PER_DOC` chunks.
-  Raise it, or raise `CHUNK_SIZE` (within the model's token limit).
+- **Documents stay `pending` although the indexer job shows `ok`:** when the embedding
+  model is not serving (undeployed, or ML Commons restarting), the Content Chunk Vector
+  Indexer skips the run, or, if the model goes away mid-run, leaves the remaining
+  documents `pending`, instead of marking them `fail`. The job itself still counts as ok;
+  the reason is in `fess-chunk.log` in the Fess log directory
+  (`data/fess/var/log/fess/`): `The embedding provider is not available; skipping
+  chunk-vector processing`, `leaving document pending`, and a closing line such as
+  `Processed N documents. Succeeded: S, Failed/Skipped: F. Failed: a, skipped: b, left
+  pending: c.` Check that the model is deployed (`model_state` is `DEPLOYED` in
+  `curl -s "http://localhost:9200/_plugins/_ml/models/$(cat data/semantic/model_id)"`),
+  then run the job again (**Start now**) or wait for the next cron run. Documents already
+  marked `fail` are not selected again; set `content_chunker.job.retry_failed=true` for one
+  run to retry them, then remove it.
+- **Many documents are `skipped`:** usually they produce more than `MAX_CHUNKS_PER_DOC`
+  chunks; raise it, or raise `CHUNK_SIZE` (within the model's token limit). A document with
+  blank `content`, or one the chunker splits into no chunks at all, is `skipped` as well
+  and needs no change.
 - **Dimension mismatch:** `init-semantic` fails fast when the model's embedding dimension
   does not match `MODEL_DIMENSION`. Align the two, then rebuild the index as described in
   [Changing the model, chunking, or theme](#changing-the-model-chunking-or-theme).
