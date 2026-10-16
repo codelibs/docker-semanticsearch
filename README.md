@@ -6,7 +6,7 @@ and sets the embedding model up automatically, so a single `docker compose up` g
 working **hybrid search** (BM25 + vector).
 
 - Fess: **15.9**
-- Search engine: OpenSearch (`ghcr.io/codelibs/fess-opensearch:3.8.0`)
+- Search engine: OpenSearch (`ghcr.io/codelibs/fess-opensearch:3.9.0`)
 - Semantic search: **Fess core** — no plugin. Semantic search moved into Fess itself in
   15.8, and [`fess-webapp-semantic-search`](https://github.com/codelibs/fess-webapp-semantic-search)
   is deprecated (see [Upgrading from Fess 15.7](#upgrading-from-fess-157))
@@ -54,7 +54,7 @@ Services start in dependency order (the base/development stack is everything exc
 `https-portal`):
 
 ```
-search01 (OpenSearch 3.8, k-NN + ML Commons, ml role)
+search01 (OpenSearch 3.9, k-NN + ML Commons, ml role)
    │ (healthy)
    ▼
 init-semantic (one-shot: registers + deploys the embedding
@@ -208,7 +208,7 @@ cp .env.example .env
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `FESS_VERSION` / `OPENSEARCH_VERSION` | `15.9.0` / `3.8.0` | Image tags |
+| `FESS_VERSION` / `OPENSEARCH_VERSION` | `15.9.0` / `3.9.0` | Image tags |
 | `MODEL_NAME` / `MODEL_VERSION` / `MODEL_FORMAT` | multilingual MiniLM-L12-v2 / `1.0.1` / `TORCH_SCRIPT` | ML Commons model to deploy |
 | `MODEL_DIMENSION` | `384` | Must match the model; baked into the index mapping |
 | `MODEL_MAX_WAIT` | `900` | Seconds to wait for model register + deploy |
@@ -401,8 +401,8 @@ the alternative is to keep Groovy by adding `fess-script-groovy:15.9.0` to
 
 A fresh 15.9 install needs none of this: its jobs are created as JavaScript.
 
-**Trying 15.9 before its release:** set `FESS_VERSION=snapshot` in `.env` to run the
-development build (`ghcr.io/codelibs/fess:snapshot`).
+**Trying the development build:** set `FESS_VERSION=snapshot` in `.env` to run the
+unreleased build (`ghcr.io/codelibs/fess:snapshot`).
 
 ### Upgrading from Fess 15.7
 
