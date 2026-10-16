@@ -7,7 +7,7 @@ services:
     # the `hybrid` query and its score-fusion processors.
     # ghcr.io/codelibs/fess-opensearch ships k-NN, ML Commons and Neural Search
     # (plus the Fess analyzers).
-    image: ghcr.io/codelibs/fess-opensearch:${OPENSEARCH_VERSION:-3.8.0}
+    image: ghcr.io/codelibs/fess-opensearch:${OPENSEARCH_VERSION:-3.9.0}
     container_name: search01
     restart: always
     environment:
