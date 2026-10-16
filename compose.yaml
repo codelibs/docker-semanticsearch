@@ -78,7 +78,7 @@ services:
       - semantic_net
 
   fess01:
-    image: ghcr.io/codelibs/fess:${FESS_VERSION:-15.9.0}
+    image: ghcr.io/codelibs/fess:${FESS_VERSION:-snapshot}
     container_name: fess01
     restart: always
     ports:

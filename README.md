@@ -5,7 +5,7 @@ Docker environment runs Fess with OpenSearch configured for **semantic (vector) 
 and sets the embedding model up automatically, so a single `docker compose up` gives you
 working **hybrid search** (BM25 + vector).
 
-- Fess: **15.9**
+- Fess: **15.10** (the in-development build, `snapshot`; pin `FESS_VERSION=15.9.0` for the release)
 - Search engine: OpenSearch (`ghcr.io/codelibs/fess-opensearch:3.9.0`)
 - Semantic search: **Fess core** — no plugin. Semantic search moved into Fess itself in
   15.8, and [`fess-webapp-semantic-search`](https://github.com/codelibs/fess-webapp-semantic-search)
@@ -208,7 +208,7 @@ cp .env.example .env
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `FESS_VERSION` / `OPENSEARCH_VERSION` | `15.9.0` / `3.9.0` | Image tags |
+| `FESS_VERSION` / `OPENSEARCH_VERSION` | `snapshot` / `3.9.0` | Image tags |
 | `MODEL_NAME` / `MODEL_VERSION` / `MODEL_FORMAT` | multilingual MiniLM-L12-v2 / `1.0.1` / `TORCH_SCRIPT` | ML Commons model to deploy |
 | `MODEL_DIMENSION` | `384` | Must match the model; baked into the index mapping |
 | `MODEL_MAX_WAIT` | `900` | Seconds to wait for model register + deploy |
@@ -401,8 +401,8 @@ the alternative is to keep Groovy by adding `fess-script-groovy:15.9.0` to
 
 A fresh 15.9 install needs none of this: its jobs are created as JavaScript.
 
-**Trying the development build:** set `FESS_VERSION=snapshot` in `.env` to run the
-unreleased build (`ghcr.io/codelibs/fess:snapshot`).
+**Development build:** `FESS_VERSION` defaults to `snapshot` (`ghcr.io/codelibs/fess:snapshot`),
+the unreleased 15.10 build. Set `FESS_VERSION=15.9.0` in `.env` for the stable release.
 
 ### Upgrading from Fess 15.7
 
