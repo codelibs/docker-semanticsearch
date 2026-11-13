@@ -182,13 +182,17 @@ keyword half splits the value at the slash and matches nothing.
 Fess still answers with keyword search alone when the free text itself uses search syntax
 or the request asks for something the vector query cannot do:
 
-- a phrase in quotes, a wildcard (`*`, and a half-width `?` — including the `?` at the
-  end of a natural-language question; a full-width `？` is fine), a range, a boost `^` or a
-  fuzzy `~`
+- a phrase in quotes, a range or a boost `^`
+- a word made only of `?` or `*`, such as the lone `?` in `miso soup ?` (a `?` stuck to the
+  last word, as in `what is a black hole?`, is fine)
 - negated text (`-word`, `NOT word`), `allintitle:` / `allinurl:`
 - a query that is only a filter, with no free text
 - an explicit **sort order**, a geo search, or a similar-document search
 - the embedding model is unavailable (Fess logs a WARN and serves keyword results)
+
+A wildcard (`*`, `?`), prefix or fuzzy (`~`) term that has a letter or digit in it does not
+count: Fess 15.10 embeds its characters as typed, so a question ending in a half-width `?`
+(`what is a black hole?`, or a Japanese sentence with no spaces) still runs semantic search.
 
 This is deliberate core behaviour, not a configuration problem. These keyword-only
 queries are not limited by `rank.fusion.pagination_depth`: they page as far as the
@@ -399,8 +403,8 @@ via `jvm.chunk.options` in `fess_config.properties`, or cap each run with
      `docker compose logs init-fess-chunk`. A run that was skipped because the embedding
      model is not serving leaves them `pending` too (see the next item).
   2. Confirm the query is not hitting the syntax gate — see
-     [When semantic search does *not* run](#when-semantic-search-does-not-run). A trailing
-     half-width `?` or a sort order is enough to disable it.
+     [When semantic search does *not* run](#when-semantic-search-does-not-run). A sort
+     order, a quoted phrase or a lone `?` (as in `miso soup ?`) is enough to disable it.
   3. Confirm `fess01` picked up a model id:
      `docker compose logs fess01 | grep 'Injecting embedding model_id'`.
 - **Documents stay `pending` although the indexer job shows `ok`:** when the embedding
