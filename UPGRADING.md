@@ -2,6 +2,10 @@
 
 Steps for moving an existing stack to a newer Fess release, newest first. A fresh install needs none of this; see [README.md](README.md).
 
+## Upgrading from Fess 15.9 to 15.10
+
+OpenSearch moves from 3.9.0 to 3.10.0 (`OPENSEARCH_VERSION`). `docker compose pull` and `docker compose up -d` open the existing data volume as it is: the indices, the stored vectors and the search results are unchanged, and no reindex or re-crawl is needed. The embedding model is redeployed by OpenSearch on its own about 15 seconds after the start; vector search is unavailable until then. A volume that 3.10.0 has opened cannot be opened by 3.9.0 again, so copy the volume first if you may need to go back.
+
 ## Upgrading from Fess 15.8
 
 Fess 15.9 moved the Groovy script engine out of core into the `fess-script-groovy`
