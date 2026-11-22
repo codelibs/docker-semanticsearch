@@ -8,7 +8,7 @@ working **hybrid search** (BM25 + vector).
 > **Upgrading from an earlier version?** See [UPGRADING.md](UPGRADING.md).
 
 - Fess: **15.10** (the in-development build, `snapshot`; pin `FESS_VERSION=15.9.0` for the release)
-- Search engine: OpenSearch (`ghcr.io/codelibs/fess-opensearch:3.9.0`)
+- Search engine: OpenSearch (`ghcr.io/codelibs/fess-opensearch:3.10.0`)
 - Semantic search: **Fess core** — no plugin. Semantic search moved into Fess itself in
   15.8, and [`fess-webapp-semantic-search`](https://github.com/codelibs/fess-webapp-semantic-search)
   is deprecated (see [Upgrading from Fess 15.7](UPGRADING.md#upgrading-from-fess-157))
@@ -56,7 +56,7 @@ Services start in dependency order (the base/development stack is everything exc
 `https-portal`):
 
 ```
-search01 (OpenSearch 3.9, k-NN + ML Commons, ml role)
+search01 (OpenSearch 3.10, k-NN + ML Commons, ml role)
    │ (healthy)
    ▼
 init-semantic (one-shot: registers + deploys the embedding
@@ -214,7 +214,7 @@ cp .env.example .env
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `FESS_VERSION` / `OPENSEARCH_VERSION` | `snapshot` / `3.9.0` | Image tags |
+| `FESS_VERSION` / `OPENSEARCH_VERSION` | `snapshot` / `3.10.0` | Image tags |
 | `MODEL_NAME` / `MODEL_VERSION` / `MODEL_FORMAT` | multilingual MiniLM-L12-v2 / `1.0.1` / `TORCH_SCRIPT` | ML Commons model to deploy |
 | `MODEL_DIMENSION` | `384` | Must match the model; baked into the index mapping |
 | `MODEL_MAX_WAIT` | `900` | Seconds to wait for model register + deploy |
